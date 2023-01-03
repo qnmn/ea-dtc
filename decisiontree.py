@@ -4,16 +4,29 @@ import random
 
 from typing import *
 
+import binarytree as bt
 import numpy as np
 
 
 class Operator(Enum):
-    LT = auto()
-    EQ = auto()
-    GT = auto()
+    LT = ('<')
+    EQ = ('=')
+    GT = ('>')
+
+    def __init__(self, rep):
+        self.rep = rep
+
+def to_btree(node):
+    if node is None:
+        return None
+    else:
+        root = bt.Node(str(node))
+        root.left = to_btree(node.left)
+        root.right = to_btree(node.right)
+        return root
 
 
-class Node:
+class Node():
 
     def __init__(self, tree, var, val, is_pred=True, op=Operator.EQ):
         self.var = var
@@ -68,8 +81,11 @@ class Node:
             else:
                 self.right.mutate_leaf(depth_threshold - 1)
 
-    def __repr__(self):
-        return f'{"P" if self.is_pred else "Q"}: {self.var} {self.op} {self.val}'
+    def __str__(self):
+        if self.is_pred:
+            return f'P: {self.val}'
+        else:
+            return f'Q: {self.var} {self.op.rep} {self.val:.3f}'
 
     def copy(self, new_root):
         new_node = Node(new_root, self.var, self.val, self.is_pred, self.op)
@@ -158,10 +174,16 @@ class DecisionTree:
             range(int(self.ranges[1, self.class_attr]) + 1))
         return Node(self, self.class_attr, predicted_class)
 
-    def __repr__(self):
-        return '\n'.join(n.__repr__() for n in self.root.iterate_nodes())
+    def __str__(self):
+        return str(to_btree(self.root))
 
     def increase_dataset_size(self):
         increase_by = int(1 + 0.02 * self.dataset_size)
         self.dataset_size = min(self.data.shape[0],
                                 self.dataset_size + increase_by)
+
+    def summary(self):
+        return f'''Max depth: {self.max_depth}
+Dataset size: {self.dataset_size}
+Score with constrained dataset: {self.score()}
+Score with full dataset: {self.score(self.data)}'''

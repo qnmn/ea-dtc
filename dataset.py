@@ -42,7 +42,7 @@ target_fitness = 1.0
 
 last_successful = None
 
-for iteration in range(1000):
+for iteration in range(3000):
     copy = tree.copy()
     copy.mutate_leaf()
     f3 = copy.score()
@@ -68,5 +68,4 @@ print(tree.dataset_size)
 
 print('--')
 print(last_successful)
-print(last_successful.score())
-print(last_successful.dataset_size)
+print(last_successful.summary())
