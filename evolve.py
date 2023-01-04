@@ -51,8 +51,7 @@ for iteration in range(3000):
         tree = copy
     if f2 >= target_fitness:
         last_successful = tree.copy()
-        print(f'Target fitness {target_fitness:.5f} has been achieved on iteration {iteration}, dataset size has been increased.')
-        print('by tree: with score ', f2, ' over ', tree.dataset_size, ' records')
+        print(f'Iteration {iteration}: Tree fitness {f2:.5f} has reached target of {target_fitness:.5f}; Dataset size has been increased to {tree.dataset_size}.')
         tree.increase_dataset_size()
         target_fitness = f2
         f2 = tree.score()
@@ -61,11 +60,6 @@ for iteration in range(3000):
 
 
 print('-- results --')
-print(f2)
-print(tree)
-print(tree.score())
-print(tree.dataset_size)
-
-print('--')
-last_successful.render()
-print(last_successful.summary())
+tree.render()
+print(tree.summary())
+print(last_successful.score())
