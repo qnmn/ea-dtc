@@ -44,7 +44,7 @@ last_successful = None
 
 for iteration in range(3000):
     copy = tree.copy()
-    copy.mutate_leaf()
+    copy.mutate_prediction()
     f3 = copy.score()
     if f3 > f2:
         f2 = f3

@@ -70,10 +70,10 @@ class DecisionTree:
     def decide(self, entry):
         return self.root.decide(entry)
 
-    def mutate_leaf(self):
+    def mutate_prediction(self):
         candidates = [
             node for node, depth in self.root.iterate_nodes()
-            if depth < self.max_depth
+            if depth < self.max_depth and node.is_pred
         ]
         if candidates:
             question = random.choice(candidates)
@@ -119,3 +119,6 @@ Score with full dataset: {self.score(self.data)}'''
         for node in self.root.iterate_nodes():
             if not node.is_pred:
                 yield node
+
+    def mutate_question(self):
+        pass
