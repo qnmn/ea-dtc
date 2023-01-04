@@ -83,9 +83,9 @@ class Node():
 
     def __str__(self):
         if self.is_pred:
-            return f'P: {self.val}'
+            return f'{self.val}'
         else:
-            return f'Q: {self.var} {self.op.rep} {self.val:.3f}'
+            return f'{self.var} \\{self.op.rep} {self.val:.3f}?'
 
     def copy(self, new_root):
         new_node = Node(new_root, self.var, self.val, self.is_pred, self.op)
@@ -187,3 +187,6 @@ class DecisionTree:
 Dataset size: {self.dataset_size}
 Score with constrained dataset: {self.score()}
 Score with full dataset: {self.score(self.data)}'''
+
+    def render(self):
+        return to_btree(self.root).graphviz().render()

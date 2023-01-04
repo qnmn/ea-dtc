@@ -67,5 +67,5 @@ print(tree.score())
 print(tree.dataset_size)
 
 print('--')
-print(last_successful)
+last_successful.render()
 print(last_successful.summary())
