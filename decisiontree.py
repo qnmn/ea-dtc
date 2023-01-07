@@ -24,6 +24,7 @@ class DecisionTree:
                  max_depth=20,
                  ranges=None):
         self.data = data
+        self.contraction_chance = 0.5
         if dataset_size <= 0:
             self.dataset_size = 2
         else:

@@ -69,8 +69,8 @@ class Node():
             # Mutate the question node.
 
 
-            # If applicable: 1/3 chance of turning the question into a prediction.
-            if self.left.is_pred and self.right.is_pred and random.random() < 1/3:
+            # If applicable: 1/4 chance of turning the question into a prediction.
+            if self.left.is_pred and self.right.is_pred and random.random() < self.tree.contraction_chance:
                 self.is_pred = True
                 self.left = None
                 self.right = None
@@ -79,17 +79,25 @@ class Node():
                 self.val = random.choice(
                     range(int(self.tree.ranges[1, self.tree.class_attr]) + 1))
             else:
-                # Even split between changing operator or value.
+                # Even split between changing variable, operator or value.
                 r = random.random()
-                if r < 1/2:
+                if r < 1/3:
                     # Change opeartor:
                     if self.op == Operator.EQ:
-                        if r < 1/4:
+                        if r < 1/6:
                             self.op = Operator.LT
                         else:
                             self.op = Operator.GT
                     else:
                         self.op = Operator.EQ
+                elif r < 2/3:
+                    # Change variable.
+                    self.var = random.randrange(0, self.tree.data.shape[1] - 1)
+                    if self.var >= self.tree.class_attr:
+                        self.var += 1
+                    # Select random value from range.
+                    lower, upper = self.tree.ranges[:,self.var]
+                    self.val = lower + random.random() * (upper - lower)
                 else:
                     # Change value.
                     lower, upper = self.tree.ranges[:,self.var]
