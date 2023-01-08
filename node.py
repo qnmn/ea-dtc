@@ -4,7 +4,7 @@ import random
 import binarytree as bt
 import numpy as np
 
-SPLIT_CHANCE = 1/3
+SPLIT_CHANCE = 0.3
 # Split 1.0 between VAR_chance VAL_chance and the chance to change the operator.
 VAR_CHANCE = 1/3
 VAL_CHANCE = 1/3
@@ -121,15 +121,6 @@ class Node():
                     self.val = rand_lower + random.random() * (rand_upper - rand_lower)
                 else:
                     # Change opeartor:
-                    # FIXME: This only makes sense for int varriables.
-                    # if self.op == Operator.EQ:
-                    #     if r < 1/6:
-                    #         self.op = Operator.LT
-                    #     else:
-                    #         self.op = Operator.GT
-                    # else:
-                    #     self.op = Operator.EQ
-
                     if self.op == Operator.LT:
                         self.op = Operator.GT
                     else:

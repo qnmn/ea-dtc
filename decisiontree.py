@@ -26,7 +26,7 @@ class DecisionTree:
                  attribute_names=None,
                  class_names=None):
         self.test_data = data
-        self.contraction_chance = 0.7
+        self.contraction_chance = 0.5
         if attribute_names is not None:
             self.attribute_names = attribute_names
         else: # Default names if none were given.

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import argparse
+import csv
 import random
 
 import scipy.io
@@ -10,31 +12,36 @@ import decisiontree
 
 random.seed(0)
 
-max_depth = 7
+max_depth = 13
 
-#################
-### Wine data ###
-#################
-wine_data = scipy.io.loadmat('./data/wine.mat')
+parser = argparse.ArgumentParser()
+parser.add_argument('dataset', nargs='?', choices=['wine', 'glass'], default='wine')
+args = parser.parse_args()
 
-X = wine_data['X']
-y = wine_data['y'].ravel()
+if args.dataset == 'wine':
+    #################
+    ### Wine data ###
+    #################
+    wine_data = scipy.io.loadmat('./data/wine.mat')
 
-np.resize(X, (X.shape[0], X.shape[1] + 1))
+    X = wine_data['X']
+    y = wine_data['y'].ravel()
 
-X[:,-1] = y
+    np.resize(X, (X.shape[0], X.shape[1] + 1))
 
-attribute_names = [info[0] for info in wine_data["attributeNames"][0]]
-class_names = {i: info[0][0] for i, info in enumerate(wine_data["classNames"])}
+    X[:,-1] = y
 
-##################
-### Glass data ###
-##################
-# glass_data = np.genfromtxt('./data/glass.data', delimiter=',')
-# X = glass_data[:,1:]
-# # Important to exclude the first attribute: 'ID'
-# attribute_names = ['RI', 'Na', 'Mg', 'Al', 'Si', 'K', 'Ca', 'Ba', 'Fe', 'Class']
-# class_names = dict(enumerate([None, 'Building float', 'Building non-float', 'Vehicle float', 'Vehicle non-flat', 'Container', 'Tableware', 'Headlamp']))
+    attribute_names = [info[0] for info in wine_data["attributeNames"][0]]
+    class_names = {i: info[0][0] for i, info in enumerate(wine_data["classNames"])}
+else:
+    ##################
+    ### Glass data ###
+    ##################
+    glass_data = np.genfromtxt('./data/glass.data', delimiter=',')
+    X = glass_data[:,1:]
+    # Important to exclude the first attribute: 'ID'
+    attribute_names = ['RI', 'Na', 'Mg', 'Al', 'Si', 'K', 'Ca', 'Ba', 'Fe', 'Class']
+    class_names = dict(enumerate([None, 'Building float', 'Building non-float', 'Vehicle float', 'Vehicle non-flat', 'Container', 'Tableware', 'Headlamp']))
 
 
 #####################
@@ -52,7 +59,7 @@ X_train, X_test = train_test_split(
 ### Greedy algorithm reference ###
 ##################################
 
-dtc = sklearn.tree.DecisionTreeClassifier(max_depth=max_depth).fit(X_train[:,:-1], X_train[:,-1])
+dtc = sklearn.tree.DecisionTreeClassifier(max_depth=max_depth, random_state=2).fit(X_train[:,:-1], X_train[:,-1])
 greedy_score = dtc.score(X_test[:,:-1], X_test[:,-1])
 
 
@@ -62,7 +69,7 @@ greedy_score = dtc.score(X_test[:,:-1], X_test[:,-1])
 initial_tree = decisiontree.DecisionTree(X_train, max_depth=max_depth, attribute_names=attribute_names, class_names=class_names)
 
 MAJOR_MUTATIONS = 2
-MINOR_MUTATIONS = 100
+MINOR_MUTATIONS = 80
 
 def mutate(initial_tree):
     tree = initial_tree.copy()
@@ -78,12 +85,12 @@ def mutate(initial_tree):
             f2 = f3
     return tree, f2
 
+fitness_history = []
 def evolve(tree):
     c1 = 0 # The number of generations for which tree contraction should be increased.
-    c2 = 0
     # Target fitness is set to the maximum achieved fitness found before increasing
     # the dataset_size. Thereafter it is lowered by 0.0001 per generation but always
-    # 0.9 at minimum.
+    # 0.7 at minimum.
     target = 1.0
     fitness = tree.score()
     generation_count = 0
@@ -99,10 +106,10 @@ def evolve(tree):
             tree = mutated
             fitness = mutated_fitness
         else:
-            # TODO: Increment 'C2'
             target = max(0.7, target - 1e-4)
         if fitness > target:
             c1 = 100
+            fitness_history.append((tree.dataset_size, fitness))
             if tree.dataset_size == tree.test_data.shape[0]:
                 break
             tree.increase_dataset_size()
@@ -111,10 +118,19 @@ def evolve(tree):
             fitness = tree.score()
     return tree, fitness, generation_count
 
-
 solution, fitness, generation_count = evolve(initial_tree)
 
-solution.render()
+
+with open('fitness_history.csv', 'w', newline='') as csvfile:
+    w = csv.writer(csvfile, delimiter=',')
+    for size, fitness in fitness_history:
+        w.writerow([size, fitness])
+
+
+try:
+    solution.render()
+except:
+    print('Failed to render tree to pdf')
 print(solution.summary())
 print(f'Total generations: {generation_count}')
 print(f'Score on test data: {solution.score(X_test)}')
