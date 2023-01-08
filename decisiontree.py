@@ -22,36 +22,51 @@ class DecisionTree:
                  class_attribute=None,
                  root=None,
                  max_depth=20,
-                 ranges=None):
-        self.data = data
-        self.contraction_chance = 0.5
+                 ranges=None,
+                 attribute_names=None,
+                 class_names=None):
+        self.test_data = data
+        self.contraction_chance = 0.7
+        if attribute_names is not None:
+            self.attribute_names = attribute_names
+        else: # Default names if none were given.
+            self.attribute_names = [f'V{i + 1}' for i in range(self.test_data.shape[1])]
+
         if dataset_size <= 0:
             self.dataset_size = 2
         else:
             self.dataset_size = dataset_size
         self.max_depth = max_depth
+
         if class_attribute is None:
             self.class_attr = data.shape[1] - 1
         else:
             self.class_attr = class_attribute
-        self.root: Optional[Node] = root
-        if ranges is None:
-            self.ranges = compute_ranges(self.data)
-        else:
-            self.ranges = ranges
 
+        self.ranges = ranges
+        if ranges is None:
+            self.ranges = compute_ranges(self.test_data)
+
+        self.class_names = class_names
+        if class_names is None:
+            lower, upper = self.ranges[:,self.class_attr]
+            self.class_names = {i: f'C{i}' for i in range(int(lower), int(upper + 1))}
+
+        self.root = root
         if root is None:
             predicted_class = random.choice(
                 range(int(self.ranges[1, self.class_attr]) + 1))
             self.root = self.random_prediction()
 
     def copy(self):
-        tree = DecisionTree(self.data,
+        tree = DecisionTree(self.test_data,
                             self.dataset_size,
                             self.class_attr,
                             root=None,
                             max_depth=self.max_depth,
-                            ranges=self.ranges)
+                            ranges=self.ranges,
+                            attribute_names=self.attribute_names,
+                            class_names=self.class_names)
         tree.root = self.root.copy(tree)
         return tree
 
@@ -59,13 +74,13 @@ class DecisionTree:
         if self.root is None:
             return 0
 
-        if data is None or data is self.data:
-            data = self.data
+        if data is None or data is self.test_data:
+            data = self.test_data
             indices = np.ones(self.dataset_size, dtype=int)
             results = np.zeros(self.dataset_size)
             self.root.cache_decide(indices, results)
 
-            correct = (results == self.data[:self.dataset_size,self.class_attr])
+            correct = (results == self.test_data[:self.dataset_size,self.class_attr])
             score = correct.astype(int, copy=False).mean()
             return score
         else:
@@ -99,14 +114,14 @@ class DecisionTree:
 
     def increase_dataset_size(self):
         increase_by = int(1 + 0.02 * self.dataset_size)
-        self.dataset_size = min(self.data.shape[0],
+        self.dataset_size = min(self.test_data.shape[0],
                                 self.dataset_size + increase_by)
 
     def summary(self):
         return f'''Max depth: {self.max_depth}
-Dataset size: {self.dataset_size} (out of {self.data.shape[0]})
+Dataset size: {self.dataset_size} (out of {self.test_data.shape[0]})
 Score with constrained dataset: {self.score()}
-Score with full dataset: {self.score(self.data)}'''
+Score with full dataset: {self.score(self.test_data)}'''
 
     def render(self):
         btree = to_btree(self.root)

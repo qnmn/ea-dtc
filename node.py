@@ -4,6 +4,11 @@ import random
 import binarytree as bt
 import numpy as np
 
+SPLIT_CHANCE = 1/3
+# Split 1.0 between VAR_chance VAL_chance and the chance to change the operator.
+VAR_CHANCE = 1/3
+VAL_CHANCE = 1/3
+
 class Operator(Enum):
     LT = ('<')
     EQ = ('=')
@@ -54,21 +59,10 @@ class Node():
 
     def mutate(self):
         if self.is_pred:
-            if random.random() < 0.7:
-                # Change prediction
-                lower, upper = self.tree.ranges[:,self.tree.class_attr]
-                if upper - lower == 1:
-                    self.val = lower if self.val == upper else upper
-                else:
-                    new_val = random.randint(lower, upper - 1)
-                    if new_val >= self.val:
-                        self.val = new_val + 1
-                    else:
-                        self.val = new_val
-            else:
+            if random.random() < SPLIT_CHANCE:
                 # Split the prediction.
                 self.var = random.choice([
-                    var for var in range(self.tree.data.shape[1])
+                    var for var in range(self.tree.test_data.shape[1])
                     if var != self.tree.class_attr
                 ])
                 self.is_pred = False
@@ -82,10 +76,22 @@ class Node():
                 # Create two child predictions.
                 self.left = self.tree.random_prediction()
                 self.right = self.tree.random_prediction()
+            else:
+                # Change prediction
+                lower, upper = self.tree.ranges[:,self.tree.class_attr]
+                if upper - lower == 1:
+                    self.val = lower if self.val == upper else upper
+                else:
+                    new_val = random.randint(lower, upper - 1)
+                    if new_val >= self.val:
+                        self.val = new_val + 1
+                    else:
+                        self.val = new_val
         else:
             # Mutate the question node.
 
             self.cache = None
+
             # If applicable: 1/4 chance of turning the question into a prediction.
             if self.left.is_pred and self.right.is_pred and random.random() < self.tree.contraction_chance:
                 self.is_pred = True
@@ -98,37 +104,44 @@ class Node():
             else:
                 # Even split between changing variable, operator or value.
                 r = random.random()
-                if r < 1/3:
-                    # Change opeartor:
-                    if self.op == Operator.EQ:
-                        if r < 1/6:
-                            self.op = Operator.LT
-                        else:
-                            self.op = Operator.GT
-                    else:
-                        self.op = Operator.EQ
-                elif r < 2/3:
+                if r < VAR_CHANCE:
                     # Change variable.
-                    self.var = random.randrange(0, self.tree.data.shape[1] - 1)
+                    self.var = random.randrange(0, self.tree.test_data.shape[1] - 1)
                     if self.var >= self.tree.class_attr:
                         self.var += 1
                     # Select random value from range.
                     lower, upper = self.tree.ranges[:,self.var]
                     self.val = lower + random.random() * (upper - lower)
-                else:
+                elif r < VAR_CHANCE + VAL_CHANCE:
                     # Change value.
                     lower, upper = self.tree.ranges[:,self.var]
                     alpha = 0.1 * (upper - lower)
                     rand_lower = max(lower, self.val - alpha)
                     rand_upper = min(upper, self.val + alpha)
                     self.val = rand_lower + random.random() * (rand_upper - rand_lower)
+                else:
+                    # Change opeartor:
+                    # FIXME: This only makes sense for int varriables.
+                    # if self.op == Operator.EQ:
+                    #     if r < 1/6:
+                    #         self.op = Operator.LT
+                    #     else:
+                    #         self.op = Operator.GT
+                    # else:
+                    #     self.op = Operator.EQ
+
+                    if self.op == Operator.LT:
+                        self.op = Operator.GT
+                    else:
+                        self.op = Operator.LT
 
 
     def __str__(self):
         if self.is_pred:
-            return f'{self.val}'
+            return self.tree.class_names[self.val]
         else:
-            return f'V{self.var} \\{self.op.rep} {self.val:.3f}?'
+            var_name = self.tree.attribute_names[self.var]
+            return f'{var_name} \\{self.op.rep} {self.val:.3f}?'
 
     def copy(self, new_root):
         new_node = Node(new_root, self.var, self.val, self.is_pred, self.op, self.cache)
@@ -151,11 +164,6 @@ class Node():
         else:
             if self.cache is None:
                 self.compute_cache()
-                # # This should generally not happen as we always want to keep an up
-                # # to date cache.
-                # print('No cache available, falling back on regular decision.')
-                # for i in range(self.tree.dataset_size):
-                #     results[i] = self.decide(self.tree.data[i,:])
             n = results.shape[0]
             # All entries remaining in indices which fullfil the node condition.
             left = np.logical_and(self.cache[:n], indices)
@@ -170,9 +178,9 @@ class Node():
             self.cache = None
         else:
             if self.op == Operator.EQ:
-                self.cache = self.tree.data[:,self.var] == self.val
+                self.cache = self.tree.test_data[:,self.var] == self.val
             elif self.op == Operator.LT:
-                self.cache = self.tree.data[:,self.var] < self.val
+                self.cache = self.tree.test_data[:,self.var] < self.val
             else: # Operator.GT
-                self.cache = self.tree.data[:,self.var] > self.val
+                self.cache = self.tree.test_data[:,self.var] > self.val
 
