@@ -49,22 +49,34 @@ class Node():
 
     def mutate(self):
         if self.is_pred:
-            # Split the prediction.
-            self.var = random.choice([
-                var for var in range(self.tree.data.shape[1])
-                if var != self.tree.class_attr
-            ])
-            self.is_pred = False
+            if random.random() < 0.7:
+                # Change prediction
+                lower, upper = self.tree.ranges[:,self.tree.class_attr]
+                if upper - lower == 1:
+                    self.val = lower if self.val == upper else upper
+                else:
+                    new_val = random.randint(lower, upper - 1)
+                    if new_val >= self.val:
+                        self.val = new_val + 1
+                    else:
+                        self.val = new_val
+            else:
+                # Split the prediction.
+                self.var = random.choice([
+                    var for var in range(self.tree.data.shape[1])
+                    if var != self.tree.class_attr
+                ])
+                self.is_pred = False
 
-            self.op = random.choice([Operator.LT,
-                                     Operator.GT])  # TODO: Operator.EQ
+                self.op = random.choice([Operator.LT,
+                                         Operator.GT])  # TODO: Operator.EQ
 
-            v_min, v_max = self.tree.ranges[:, self.var]
-            self.val = v_min + random.random() * (v_max - v_min)
+                v_min, v_max = self.tree.ranges[:, self.var]
+                self.val = v_min + random.random() * (v_max - v_min)
 
-            # Create two child predictions.
-            self.left = self.tree.random_prediction()
-            self.right = self.tree.random_prediction()
+                # Create two child predictions.
+                self.left = self.tree.random_prediction()
+                self.right = self.tree.random_prediction()
         else:
             # Mutate the question node.
 
