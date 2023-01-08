@@ -7,9 +7,9 @@ import decisiontree
 
 random.seed(0)
 
-#####################
-### Load the data ###
-#####################
+#################
+### Wine data ###
+#################
 wine_data = scipy.io.loadmat('./data/wine.mat')
 
 X = wine_data['X']
@@ -21,6 +21,12 @@ X[:,-1] = y
 
 attribute_names = [info[0] for info in wine_data["attributeNames"][0]]
 class_names = [info[0][0] for info in wine_data["classNames"]]
+
+##################
+### Glass data ###
+##################
+glass_data = np.genfromtxt('./data/glass.data', delimiter=',')
+X = glass_data[:,1:]
 
 
 #####################
@@ -41,10 +47,10 @@ for old, new in enumerate(shuffled_order):
 #################
 initial_tree = decisiontree.DecisionTree(X_shuffled, max_depth=13)
 
-X = 4
-Y = 50
+X = 2
+Y = 80
 
-def generation(initial_tree):
+def mutate(initial_tree):
     tree = initial_tree.copy()
     for _ in range(X):
         tree.mutate_question()
@@ -73,14 +79,14 @@ def evolve(tree):
             tree.contraction_chance = 0.6
         else:
             tree.contraction_chance = 0.3
-        mutated, mutated_fitness = generation(tree)
+        mutated, mutated_fitness = mutate(tree)
         generation_count += 1
         if mutated_fitness > fitness:
             tree = mutated
             fitness = mutated_fitness
         else:
             # TODO: Increment 'C2'
-            target = max(0.9, target - 1e-4)
+            target = max(0.7, target - 1e-4)
         if fitness > target:
             c1 = 100
             if tree.dataset_size == tree.data.shape[0]:
