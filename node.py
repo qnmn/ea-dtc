@@ -2,6 +2,7 @@ from enum import Enum
 import random
 
 import binarytree as bt
+import numpy as np
 
 class Operator(Enum):
     LT = ('<')
@@ -23,16 +24,18 @@ def to_btree(node):
 
 class Node():
 
-    def __init__(self, tree, var, val, is_pred=True, op=Operator.EQ):
+    def __init__(self, tree, var, val, is_pred=True, op=Operator.EQ, cache=None):
         self.var = var
         self.is_pred = is_pred
         self.op = op
         self.val = val
 
-        self.tree: DecisionTree = tree
+        self.tree = tree
 
-        self.left: Optional[Node] = None
-        self.right: Optional[Node] = None
+        self.left = None
+        self.right = None
+
+        self.cache = cache
 
     def decide(self, entry):
         if self.is_pred:
@@ -40,8 +43,10 @@ class Node():
         else:
             var_val = entry[self.var]
             if self.op == Operator.LT and var_val < self.val or self.op == Operator.EQ and var_val == self.val or self.op == Operator.GT and var_val > self.val:
+                # Left branch is yes.
                 return self.left.decide(entry)
             else:
+                # Right branch is no.
                 return self.right.decide(entry)
 
     def split_leaf(self):
@@ -80,7 +85,7 @@ class Node():
         else:
             # Mutate the question node.
 
-
+            self.cache = None
             # If applicable: 1/4 chance of turning the question into a prediction.
             if self.left.is_pred and self.right.is_pred and random.random() < self.tree.contraction_chance:
                 self.is_pred = True
@@ -126,7 +131,7 @@ class Node():
             return f'V{self.var} \\{self.op.rep} {self.val:.3f}?'
 
     def copy(self, new_root):
-        new_node = Node(new_root, self.var, self.val, self.is_pred, self.op)
+        new_node = Node(new_root, self.var, self.val, self.is_pred, self.op, self.cache)
         if self.left is not None:
             new_node.left = self.left.copy(new_root)
         if self.right is not None:
@@ -139,3 +144,35 @@ class Node():
         yield (self, depth)
         if self.right is not None:
             yield from self.right.iterate_nodes(depth+1)
+
+    def cache_decide(self, indices, results):
+        if self.is_pred:
+            results[indices] = self.val
+        else:
+            if self.cache is None:
+                self.compute_cache()
+                # # This should generally not happen as we always want to keep an up
+                # # to date cache.
+                # print('No cache available, falling back on regular decision.')
+                # for i in range(self.tree.dataset_size):
+                #     results[i] = self.decide(self.tree.data[i,:])
+            n = results.shape[0]
+            # All entries remaining in indices which fullfil the node condition.
+            left = np.logical_and(self.cache[:n], indices)
+            # All the others
+            right = np.logical_xor(left, indices)
+            self.left.cache_decide(left, results)
+            self.right.cache_decide(right, results)
+
+    def compute_cache(self):
+        if self.is_pred:
+            # No cache necessary for prediction nodes.
+            self.cache = None
+        else:
+            if self.op == Operator.EQ:
+                self.cache = self.tree.data[:,self.var] == self.val
+            elif self.op == Operator.LT:
+                self.cache = self.tree.data[:,self.var] < self.val
+            else: # Operator.GT
+                self.cache = self.tree.data[:,self.var] > self.val
+

@@ -55,18 +55,24 @@ class DecisionTree:
         tree.root = self.root.copy(tree)
         return tree
 
-    def score(self, test_data=None):
+    def score(self, data=None):
         if self.root is None:
             return 0
-        if test_data is None:
-            test_data = self.data
-            num_entries = self.dataset_size
-        else:
-            num_entries = test_data.shape[0]
 
-        return sum(
-            self.decide(test_data[i, :]) == test_data[i, self.class_attr]
-            for i in range(num_entries)) / num_entries
+        if data is None or data is self.data:
+            data = self.data
+            indices = np.ones(self.dataset_size, dtype=int)
+            results = np.zeros(self.dataset_size)
+            self.root.cache_decide(indices, results)
+
+            correct = (results == self.data[:self.dataset_size,self.class_attr])
+            score = correct.astype(int, copy=False).mean()
+            return score
+        else:
+            num_entries = data.shape[0]
+            return sum(
+                self.decide(data[i, :]) == data[i, self.class_attr]
+                for i in range(num_entries)) / num_entries
 
     def decide(self, entry):
         return self.root.decide(entry)
