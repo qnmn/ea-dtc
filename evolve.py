@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-import scipy.io
-import numpy as np
 import random
+
+import scipy.io
+from sklearn.model_selection import train_test_split
+import numpy as np
 
 import decisiontree
 
@@ -32,20 +34,18 @@ X = glass_data[:,1:]
 #####################
 ### Preprocessing ###
 #####################
-
-# Shuffle data randomly to evenly distribute the classes among the records.
-X_shuffled = np.zeros(X.shape)
-shuffled_order = list(range(X.shape[0]))
-random.shuffle(shuffled_order)
-for old, new in enumerate(shuffled_order):
-    X_shuffled[new,:] = X[old,:]
-
+X_train, X_test = train_test_split(
+    X, test_size=0.3,
+    random_state=2,
+    shuffle=True,
+    stratify=X[:,-1]
+)
 
 
 #################
 ### Algorithm ###
 #################
-initial_tree = decisiontree.DecisionTree(X_shuffled, max_depth=13)
+initial_tree = decisiontree.DecisionTree(X_train, max_depth=13)
 
 X = 2
 Y = 80
@@ -103,3 +103,4 @@ solution, fitness, generation_count = evolve(initial_tree)
 solution.render()
 print(solution.summary())
 print(f'Total generations: {generation_count}')
+print(solution.score(X_test))
