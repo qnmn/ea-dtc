@@ -18,6 +18,7 @@ class Operator(Enum):
         self.rep = rep
 
 def to_btree(node):
+    # Convert our nodes to nodes from the binarytree package to allow visualization.
     if node is None:
         return None
     else:
@@ -30,19 +31,22 @@ def to_btree(node):
 class Node():
 
     def __init__(self, tree, var, val, is_pred=True, op=Operator.EQ, cache=None):
+        # The elements as described in our report.
         self.var = var
         self.is_pred = is_pred
         self.op = op
         self.val = val
 
-        self.tree = tree
-
         self.left = None
         self.right = None
 
+        # The tree to which this node belongs.
+        self.tree = tree
+        # A cache to save repeated computations.
         self.cache = cache
 
     def decide(self, entry):
+        # Classify a single entry.
         if self.is_pred:
             return self.val
         else:
@@ -54,15 +58,12 @@ class Node():
                 # Right branch is no.
                 return self.right.decide(entry)
 
-    def split_leaf(self):
-        self.mutate()
-
     def mutate(self):
         if self.is_pred:
             if random.random() < SPLIT_CHANCE:
                 # Split the prediction.
                 self.var = random.choice([
-                    var for var in range(self.tree.test_data.shape[1])
+                    var for var in range(self.tree.training_data.shape[1])
                     if var != self.tree.class_attr
                 ])
                 self.is_pred = False
@@ -92,7 +93,7 @@ class Node():
 
             self.cache = None
 
-            # If applicable: 1/4 chance of turning the question into a prediction.
+            # If applicable: chance of turning the question into a prediction.
             if self.left.is_pred and self.right.is_pred and random.random() < self.tree.contraction_chance:
                 self.is_pred = True
                 self.left = None
@@ -106,7 +107,7 @@ class Node():
                 r = random.random()
                 if r < VAR_CHANCE:
                     # Change variable.
-                    self.var = random.randrange(0, self.tree.test_data.shape[1] - 1)
+                    self.var = random.randrange(0, self.tree.training_data.shape[1] - 1)
                     if self.var >= self.tree.class_attr:
                         self.var += 1
                     # Select random value from range.
@@ -134,15 +135,17 @@ class Node():
             var_name = self.tree.attribute_names[self.var]
             return f'{var_name} \\{self.op.rep} {self.val:.3f}?'
 
-    def copy(self, new_root):
-        new_node = Node(new_root, self.var, self.val, self.is_pred, self.op, self.cache)
+    def copy(self, new_tree):
+        # Copy the node and all of its descendants (and link them to the new tree).
+        new_node = Node(new_tree, self.var, self.val, self.is_pred, self.op, self.cache)
         if self.left is not None:
-            new_node.left = self.left.copy(new_root)
+            new_node.left = self.left.copy(new_tree)
         if self.right is not None:
-            new_node.right = self.right.copy(new_root)
+            new_node.right = self.right.copy(new_tree)
         return new_node
 
     def iterate_nodes(self, depth=1):
+        # Traverse in inorder.
         if self.left is not None:
             yield from self.left.iterate_nodes(depth+1)
         yield (self, depth)
@@ -150,28 +153,36 @@ class Node():
             yield from self.right.iterate_nodes(depth+1)
 
     def cache_decide(self, indices, results):
+        # Use the cache system to classify a bunch of training dataset entries.
+        # `indices` contains a one for all entries that have 'reached' this node
+        # zero for the others.
+        # `results` is the vector to which we will write the classifications.
         if self.is_pred:
             results[indices] = self.val
         else:
             if self.cache is None:
                 self.compute_cache()
             n = results.shape[0]
+
             # All entries remaining in indices which fullfil the node condition.
             left = np.logical_and(self.cache[:n], indices)
+
             # All the others
             right = np.logical_xor(left, indices)
+
             self.left.cache_decide(left, results)
             self.right.cache_decide(right, results)
 
     def compute_cache(self):
+        # Compute the answers to the question for all training dataset records and save them.
         if self.is_pred:
             # No cache necessary for prediction nodes.
             self.cache = None
         else:
             if self.op == Operator.EQ:
-                self.cache = self.tree.test_data[:,self.var] == self.val
+                self.cache = self.tree.training_data[:,self.var] == self.val
             elif self.op == Operator.LT:
-                self.cache = self.tree.test_data[:,self.var] < self.val
+                self.cache = self.tree.training_data[:,self.var] < self.val
             else: # Operator.GT
-                self.cache = self.tree.test_data[:,self.var] > self.val
+                self.cache = self.tree.training_data[:,self.var] > self.val
 
