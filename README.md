@@ -1,5 +1,5 @@
 # Evolutionary algorithm for decision tree induction
-## Required pacakges
+## Required packages
 The python packages are saved in `requirements.txt`, therefore simply run
 ```
 $ pip install -r requirements.txt
